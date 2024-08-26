@@ -1,0 +1,42 @@
+# Load the data from the CSV file
+data = pd.read_csv('sample_data.csv')
+
+# Function to calculate the Haversine distance (geodesic distance)
+def calculate_distance(lat1, lon1, lat2, lon2):
+    return geodesic((lat1, lon1), (lat2, lon2)).meters
+
+# Set a threshold distance in meters (e.g., 1000 meters)
+threshold_distance = 1000
+
+# Create an empty column to hold vessel proximity data
+data['vessel_proximity'] = [[] for _ in range(len(data))]
+
+# Vectorized computation of distance for all pairs of vessels at each timestamp
+for (index1, row1), (index2, row2) in combinations(data.iterrows(), 2):
+    # Check if the MMSIs are different
+    if row1['MMSI'] != row2['MMSI']:
+        # Calculate the distance between two vessels using their lat/lon
+        distance = calculate_distance(row1['Latitude'], row1['Longitude'], row2['Latitude'], row2['Longitude'])
+        
+        # If the distance is within the threshold, log the proximity event
+        if distance <= threshold_distance:
+            data.at[index1, 'vessel_proximity'].append(row2['MMSI'])
+            data.at[index2, 'vessel_proximity'].append(row1['MMSI'])
+
+# Extract relevant columns for output
+output_data = data[['MMSI', 'vessel_proximity', 'Timestamp']]
+
+# Save the output to a CSV file
+output_data.to_csv('vessel_proximity_output.csv', index=False)
+
+print("Proximity detection completed and saved to 'vessel_proximity_output.csv'.")
+
+# Optional: Plot the vessel locations for visualization
+plt.figure(figsize=(10, 6))
+plt.scatter(data['Longitude'], data['Latitude'], c='blue', marker='o', alpha=0.5, label='Vessel Locations')
+plt.title('Vessel Locations in Marine Region')
+plt.xlabel('Longitude')
+plt.ylabel('Latitude')
+plt.legend()
+plt.grid(True)
+plt.show()
